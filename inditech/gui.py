@@ -24,11 +24,7 @@ def load_image(url, max_size=(300, 300)):
         print(f"Error al procesar la imagen desde {url}: {e}")
         return None
 
-def handle_image_click(search_url, frame):
-    # Tu código que usa frame
-    for widget in frame.winfo_children():
-        widget.destroy()
-
+def handle_image_click(search_url, frame, num_columns):
     print("Clicked on image:", search_url)
     df = pd.read_csv("data/inditextech_hackupc_challenge_images.csv")
     prefix = "https://static.zara.net/photos///"
@@ -75,17 +71,10 @@ def handle_image_click(search_url, frame):
                             # Intentar abrir la imagen descargada
                             image2 = Image.open(BytesIO(response.content)).resize((224, 224))
 
-                            # Guardar la imagen en disco
-                            #image.save(f"imagen_{index}.jpg")  # Cambia el formato de imagen si lo deseas
-
                             print(image_url)
                             # Cargar el modelo EfficientNet
                             model = EfficientNet.from_pretrained('efficientnet-b1')
                             model.eval()
-
-                            # Abrir y redimensionar las imágenes
-                            #image1 = Image.open("./imagen_current_search.jpg").resize((224, 224))
-                            #image2 = Image.open(f"./imagen_{index}.jpg").resize((224, 224))
 
                             # Transformar las imágenes a tensores
                             transform = transforms.ToTensor()
@@ -101,7 +90,7 @@ def handle_image_click(search_url, frame):
                             similarity = float(cos(features1.flatten(), features2.flatten()))
                             similarity_scores.append((image_url, similarity))
 
-                            print(f"Cosine similarity between the two images: {similarity:.4f}")
+                            #print(f"Cosine similarity between the two images: {similarity:.4f}")
 
                             # Si ya hemos alcanzado la cantidad deseada de similitudes, establecemos la bandera
                             if len(similarity_scores) >= 50:
@@ -111,17 +100,18 @@ def handle_image_click(search_url, frame):
                         except Exception as e:
                             print(f"Error al abrir la imagen desde {image_url}: {e}")
                     else:
-                        print(f"Error al descargar la imagen desde {image_url}: {response.status_code}")
+                        print(f"Error request {image_url}: {response.status_code}")
                 except Exception as e:
                     print(f"Error al procesar la imagen desde {image_url}: {e}")
 
         similarity_scores = sorted(similarity_scores, key=lambda x: x[1], reverse=True)
 
-        print("Top 10 prendas recomendadas:")
 
         for widget in frame.winfo_children():
             widget.destroy()
-        for i, url, score in similarity_scores[:10]:
+        
+        print("Top 10 prendas recomendadas:")
+        for i, (url, score) in enumerate(similarity_scores[:10]):
             print(f"URL: {url}, Similitud: {score}")
 
             if pd.notna(url) and url.startswith('http'):
@@ -134,6 +124,7 @@ def handle_image_click(search_url, frame):
                         frame.grid_columnconfigure(i % num_columns, weight=1)
                 except Exception as e:
                     print(f"Error al procesar la imagen desde {url}: {e}")
+
 
     else:
         print(f"Error al obtener la imagen de búsqueda: {search_response.status_code}")
@@ -162,7 +153,7 @@ def main():
     canvas.create_window((0, 0), window=frame, anchor='nw')
 
     df = pd.read_csv("data/inditextech_hackupc_challenge_images.csv")
-    image_urls = df.iloc[:100, 2]
+    image_urls = df.iloc[:20, 2]
 
     for i, url in enumerate(image_urls):
         if pd.notna(url) and url.startswith('http'):
@@ -173,7 +164,7 @@ def main():
                     label.image = image  # Guardar una referencia a la imagen
                     label.grid(row=i // num_columns, column=i % num_columns, padx=15, pady=15, sticky='nsew')
                     frame.grid_columnconfigure(i % num_columns, weight=1)
-                    label.bind("<Button-1>", lambda event, url=url, fr=frame: handle_image_click(url, fr))
+                    label.bind("<Button-1>", lambda event, url=url, fr=frame: handle_image_click(url, fr, num_columns))
             except Exception as e:
                 print(f"Error al procesar la imagen desde {url}: {e}")
 
